@@ -1,23 +1,35 @@
-require 'json'
-require 'httparty'
-require 'logger'
-require 'singleton'
+%w{active_support/core_ext/class/attribute_accessors active_support/core_ext/object/blank json httparty logger}.each { |l| require l }
 
 module TropoREST
+  class << self
+    def logger=(logger)
+      [API, Troplets].each do |endpoint|
+        endpoint.send :logger=, logger
+      end
+    end
+
+    def tokens=(tokens)
+      [[:tropo, API], [:troplets, Troplets]].each do |type, target|
+        if token = tokens[type]
+          if token.is_a? String
+            target.voice_token = token
+          elsif token.is_a? Hash
+            target.voice_token = token[:voice]
+            target.messaging_token = token[:messaging]
+          end
+        end
+      end
+    end
+
+    def method_missing(method_name, *args, &block)
+      API.send method_name, *args, &block
+    end
+  end
+
   class API
     include HTTParty
-    include Singleton
 
-    attr_writer :logger
-
-    def initialize
-      @logger = Logger.new STDOUT
-      @logger.level = Logger::WARN
-    end
-
-    def token=(token)
-      self.class.default_params token: token
-    end
+    cattr_accessor :logger, :voice_token, :messaging_token
 
     base_uri 'https://api.tropo.com'
     SESSION_URI = '/1.0/sessions'
@@ -25,22 +37,52 @@ module TropoREST
     format :json
     headers 'Accept' => 'application/json', 'content-type' => 'application/json'
 
-    def originate(options = {})
-      @logger.debug "Originating Tropo call with parameters #{options}"
-      resp = self.class.post SESSION_URI, body: options
-      @logger.debug "Tropo origination responded with: #{resp.inspect}"
-      resp
-    end
+    self.logger = Logger.new STDOUT
+    self.logger.level = Logger::DEBUG
+    debug_output self.logger
 
-    def fire_event(event_name, session_id)
-      @logger.debug "Firing event #{event_name} into Tropo session #{session_id}"
-      resp = self.class.post "#{SESSION_URI}/#{session_id}/signals", body: { value: event_name }
-      @logger.debug "Tropo event trigger responded with: #{resp.inspect}"
-      resp
+    class << self
+      def originate(options = {})
+        logger.info "Originating Tropo call with parameters #{options}"
+        resp = request SESSION_URI, options
+        logger.info "Tropo origination responded with: #{resp.inspect}"
+        resp
+      end
+
+      def fire_event(event_name, session_id)
+        logger.info "Firing event #{event_name} into Tropo session #{session_id}"
+        resp = request "#{SESSION_URI}/#{session_id}/signals", value: event_name
+        logger.info "Tropo event trigger responded with: #{resp.inspect}"
+        resp
+      end
+
+      def request(target, body, type = nil)
+        options = options_with_token body, type
+        logger.debug "Making request to #{target} with #{options.inspect}"
+        post target, body: options.to_json
+      end
+
+      def options_with_token(options, type = :voice)
+        token = case type
+        when :messaging then messaging_token
+        else voice_token
+        end
+        options.merge! token: token
+      end
     end
   end
 
-  def self.method_missing(method_name, *args, &block)
-    API.instance.send method_name, *args, &block
+  class Troplets < API
+    base_uri 'http://troplets.tropo.com'
+
+    class << self
+      def say(to, message, options = {})
+        logger.debug "Using Troplets to say #{message} to #{to}"
+        options.merge! to: to, message: message
+        resp = request '/say', options, options[:channel] == :voice ? :voice : :messaging
+        logger.debug "Troplet#say responded with: #{resp.inspect}"
+        resp
+      end
+    end
   end
 end
