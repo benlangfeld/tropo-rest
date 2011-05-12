@@ -34,8 +34,8 @@ module TropoREST
     base_uri 'https://api.tropo.com'
     SESSION_URI = '/1.0/sessions'
 
-    format :json
-    headers 'Accept' => 'application/json', 'content-type' => 'application/json'
+    # format :json
+    # headers 'Accept' => 'application/json', 'content-type' => 'application/json'
 
     self.logger = Logger.new STDOUT
     self.logger.level = Logger::DEBUG
@@ -59,7 +59,7 @@ module TropoREST
       def request(target, body, type = nil)
         options = options_with_token body, type
         logger.debug "Making request to #{target} with #{options.inspect}"
-        post target, body: options.to_json
+        get target, query: options
       end
 
       def options_with_token(options, type = :voice)
