@@ -63,7 +63,7 @@ module TropoREST
       end
 
       def options_with_token(options, type = :voice)
-        options.merge! token: type.to_sym == :text ? messaging_token : voice_token
+        options.merge! token: type && type.to_sym == :text ? messaging_token : voice_token
       end
     end
   end
