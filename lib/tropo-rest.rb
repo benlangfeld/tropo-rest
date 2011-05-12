@@ -44,7 +44,7 @@ module TropoREST
     class << self
       def originate(options = {})
         logger.info "Originating Tropo call with parameters #{options}"
-        resp = request SESSION_URI, options
+        resp = request SESSION_URI, options, options[:channel]
         logger.info "Tropo origination responded with: #{resp.inspect}"
         resp
       end
