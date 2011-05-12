@@ -29,7 +29,7 @@ module TropoREST
   class API
     include HTTParty
 
-    cattr_accessor :logger, :voice_token, :messaging_token
+    cattr_accessor :logger, :voice_token, :messaging_token, :troplets_voice_token, :troplets_messaging_token
 
     base_uri 'https://api.tropo.com'
     SESSION_URI = '/1.0/sessions'
@@ -63,11 +63,7 @@ module TropoREST
       end
 
       def options_with_token(options, type = :voice)
-        token = case type
-        when :messaging then messaging_token
-        else voice_token
-        end
-        options.merge! token: token
+        options.merge! token: type == :messaging ? messaging_token : voice_token
       end
     end
   end
@@ -83,6 +79,18 @@ module TropoREST
         logger.debug "Troplet#say responded with: #{resp.inspect}"
         resp
       end
+
+      def voice_token=(token)
+        troplets_voice_token = token
+      end
+
+      def voice_token; troplets_voice_token; end
+
+      def messaging_token=(token)
+        troplets_messaging_token = token
+      end
+
+      def messaging_token; troplets_messaging_token; end
     end
   end
 end
