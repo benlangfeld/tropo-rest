@@ -81,16 +81,16 @@ module TropoREST
       end
 
       def voice_token=(token)
-        troplets_voice_token = token
+        self.troplets_voice_token = token
       end
 
-      def voice_token; troplets_voice_token; end
+      def voice_token; self.troplets_voice_token; end
 
       def messaging_token=(token)
-        troplets_messaging_token = token
+        self.troplets_messaging_token = token
       end
 
-      def messaging_token; troplets_messaging_token; end
+      def messaging_token; self.troplets_messaging_token; end
     end
   end
 end
